@@ -7,7 +7,7 @@ class DatabaseHelper:
     def __init__(self, url: str, echo: bool = False):
         self.engine = create_async_engine(
             url=url,
-            echo=echo,
+            # echo=echo,
         )
         self.session_factory = async_sessionmaker(
             bind=self.engine,
@@ -34,4 +34,4 @@ class DatabaseHelper:
         await session.close()
 
 
-db_helper = DatabaseHelper(url=settings.db_url, echo=settings.db_echo)
+db_helper = DatabaseHelper(url=settings.db.url, echo=settings.db.echo)
