@@ -1,3 +1,4 @@
+from sqlalchemy.orm import joinedload, selectinload
 import asyncio
 from core.models import db_helper, User, Profile, Post
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,20 +37,93 @@ async def create_user_profile(
     return profile
 
 
-async def show_users_with_profiles(session: AsyncSession) -> list[User]:
-    stmt = select(User).order_by(User.id)
+async def show_users_with_profiles(session: AsyncSession):
+    stmt = select(User).options(joinedload(User.profile)).order_by(User.id)
     # result: Result = await session.execute(stmt)
     users = await session.scalars(stmt)
     for user in users:
         print(user)
+        print(user.profile.firstname)
+
+
+async def create_posts(
+    session: AsyncSession,
+    user_id: int,
+    *posts_titles: str,
+) -> list[Post]:
+    posts = [
+        Post(title=title, user_id=user_id)
+        for title in posts_titles
+    ]
+    session.add_all(posts)
+    await session.commit()
+    print(posts)
+    return posts
+
+
+async def get_users_with_posts(
+        session: AsyncSession,
+):
+    # stmt = select(User).options(joinedload(User.posts)).order_by(User.id)
+    stmt = select(User).options(selectinload(User.posts)).order_by(User.id)
+    # users = await session.scalars(stmt)
+    # result: Result = await session.execute(stmt)
+    # users = result.unique().scalars()
+    # users = result.scalars()
+    users = await session.scalars(stmt)
+    # for user in users.unique():
+    for user in users:
+        print("**" * 10)
+        print(user)
+        for post in user.posts:
+            print("-", post)
+
+
+async def get_users_with_posts_and_profiles(
+        session: AsyncSession,
+):
+    stmt = select(User).options(selectinload(User.profile), selectinload(User.posts)).order_by(User.id)
+    users = await session.scalars(stmt)
+    for user in users:
+        print("**" * 10)
+        print(user, user.profile and user.profile.firstname)
+        for post in user.posts:
+            print("-", post)
+
+
+async def get_posts_with_authors(session: AsyncSession):
+    stmt = select(Post).options(joinedload(Post.user)).order_by(Post.id)
+    posts = await session.scalars(stmt)
+
+    for post in posts:
+        print("post", post)
+        print("author", post.user)
+
+
+async def get_profiles_with_users_and_users_with_posts(session: AsyncSession):
+    stmt = (
+        select(Profile)
+        .join(Profile.user)
+        .options(
+            joinedload(Profile.user).selectinload(User.posts),
+        )
+        .where(User.username == 'john')
+        .order_by(Profile.id)
+    )
+    profiles = await session.scalars(stmt)
+
+    for profile in profiles:
+        print(profile.firstname, profile.user)
+        print(profile.user.posts)
 
 
 async def main():
     async with db_helper.session_factory() as session:
-#         # await create_user(session=session, username="john")
-#         # await create_user(session=session, username="sam")
-#         user_sam = await get_user_buy_username(session=session, username="sam")
-#         user_john = await get_user_buy_username(session=session, username="john")
+        # await create_user(session=session, username="john")
+        # await create_user(session=session, username="alice")
+        # await create_user(session=session, username="sam")
+        user_sam = await get_user_buy_username(session=session, username="sam")
+        user_john = await get_user_buy_username(session=session, username="john")
 #         # await get_user_buy_username(session=session, username="bob")
 #         await create_user_profile(
 #             session=session,
@@ -64,8 +138,24 @@ async def main():
 #             last_name="White"
 #
 #         )
-        await show_users_with_profiles(session=session)
-
+#         await show_users_with_profiles(session=session)
+#         await create_posts(
+#             session,
+#             user_john.id,
+#             "SQLA 2.0",
+#             "SQLA Joins"
+#         )
+#         await create_posts(
+#                     session,
+#                     user_sam.id,
+#                     "FastAPI intro",
+#                     "FastAPI Advanced",
+#                     "FastAPI more",
+#                 )
+#         await get_users_with_posts(session=session)
+#         await get_posts_with_authors(session=session)
+#         await get_users_with_posts_and_profiles(session=session)
+        await get_profiles_with_users_and_users_with_posts(session=session)
 
 if __name__ == '__main__':
     asyncio.run(main())
