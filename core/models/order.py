@@ -14,10 +14,10 @@ class Order(Base):
         server_default=func.now(),
         default=datetime.utcnow,
     )
-    products: Mapped[list["Product"]] = relationship(
-        secondary="order_product_association",
-        back_populates="orders"
-    )
+    # products: Mapped[list["Product"]] = relationship(
+    #     secondary="order_product_association",
+    #     back_populates="orders"
+    # )
 
     products_details: Mapped[list["OrderProductAssociation"]] = relationship(
         back_populates="order"
